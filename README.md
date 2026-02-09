@@ -8,7 +8,7 @@
 
 
 
-Event-driven Super Bowl (NFL) tracker with **Gemini-powered live commentary**. Extended from [cfp-ai-tracker](https://github.com/csepka/cfp-ai-tracker): same FSM (PREGAME → LIVE → FINAL), edge-triggered updates, and win-probability model—but uses the **Gemini API** for all commentary, QB watch, and postgame recap.
+An extension of [cfp-ai-tracker](https://github.com/csepka/cfp-ai-tracker) for the **Super Bowl—the largest sporting event in history**. Event-driven NFL tracker with **Gemini-powered live commentary**: same FSM (PREGAME → LIVE → FINAL), edge-triggered updates, and win-probability model, now using the **Gemini API** for all commentary and postgame recap.
 
 ## Features
 
