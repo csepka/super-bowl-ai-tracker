@@ -1,4 +1,8 @@
 # Super Bowl AI Tracker
+<img width="1266" height="585" alt="IMG_5635" src="https://github.com/user-attachments/assets/c167b7d5-13b6-4444-86d3-797cc9103d51" />
+<img width="910" height="318" alt="SUPER BOWL AI TRACKER" src="https://github.com/user-attachments/assets/78c71d56-962b-484e-8fee-c6ab10a648f0" />
+
+
 
 Event-driven Super Bowl (NFL) tracker with **Gemini-powered live commentary**. Extended from [cfp-ai-tracker](https://github.com/csepka/cfp-ai-tracker): same FSM (PREGAME → LIVE → FINAL), edge-triggered updates, and win-probability model—but uses the **Gemini API** for all commentary, QB watch, and postgame recap.
 
