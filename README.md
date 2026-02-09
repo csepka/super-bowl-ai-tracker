@@ -1,6 +1,10 @@
 # Super Bowl AI Tracker
-<img width="1266" height="585" alt="IMG_5635" src="https://github.com/user-attachments/assets/c167b7d5-13b6-4444-86d3-797cc9103d51" />
-<img width="910" height="318" alt="SUPER BOWL AI TRACKER" src="https://github.com/user-attachments/assets/78c71d56-962b-484e-8fee-c6ab10a648f0" />
+<p align="center">
+  <img width="1266" height="585" alt="IMG_5635" src="https://github.com/user-attachments/assets/c167b7d5-13b6-4444-86d3-797cc9103d51" />
+  <br>
+  <img width="910" height="318" alt="SUPER BOWL AI TRACKER" src="https://github.com/user-attachments/assets/78c71d56-962b-484e-8fee-c6ab10a648f0" />
+</p>
+
 
 
 
