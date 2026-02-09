@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Bowl AI Tracker</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 900px; margin: 0 auto; padding: 1rem; background: #0a0a0f; color: #e0e0e0; }
+    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .subtitle { opacity: 0.8; font-size: 0.9rem; margin-bottom: 1rem; }
+    .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+    .teams { display: flex; align-items: center; gap: 1rem; }
+    .teams img { height: 48px; width: auto; }
+    .meta { font-size: 0.85rem; opacity: 0.85; }
+    .badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+    .badge.live { background: #c00; color: #fff; }
+    .badge.pregame { background: #555; color: #fff; }
+    .badge.final { background: #282; color: #fff; }
+    .badge.live-badge { background: #c00; color: #fff; margin-right: 0.5rem; }
+    .card { background: #16161d; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border: 1px solid #2a2a35; }
+    .card h2 { font-size: 1rem; margin: 0 0 0.5rem 0; display: flex; align-items: center; justify-content: space-between; }
+    .score-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin: 0.5rem 0; }
+    .score-row img { height: 36px; }
+    ul { margin: 0; padding-left: 1.25rem; }
+    li { margin: 0.25rem 0; }
+    button { background: #2563eb; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    button.run-full-demo { background: #059669; font-weight: 600; padding: 0.6rem 1.25rem; }
+    button.run-full-demo:hover:not(:disabled) { background: #047857; }
+    #countdown { font-variant-numeric: tabular-nums; font-size: 1.25rem; }
+    .panel-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .panel-actions label { font-size: 0.85rem; }
+    a.run-full-demo-link { color: #34d399; font-weight: 600; cursor: pointer; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div id="apiKeyWarning" style="display:none; background:#4a1a1a; color:#ffb3b3; padding:0.5rem 1rem; margin-bottom:1rem; border-radius:6px; font-size:0.9rem;">
+    GEMINI_API_KEY not set. Add it to the .env file in the project root, then restart the server.
+  </div>
+  <div class="header">
+    <div>
+      <h1>SUPER BOWL AI TRACKER</h1>
+      <div class="subtitle">Gemini-powered live commentary</div>
+    </div>
+    <div class="teams">
+      {% if away_logo %}<img src="{{ away_logo }}" alt="">{% endif %}
+      <span id="hdrAwayTeam">{{ state.away_team or 'Seahawks' }}</span>
+      <span>vs</span>
+      <span id="hdrHomeTeam">{{ state.home_team or 'Patriots' }}</span>
+      {% if home_logo %}<img src="{{ home_logo }}" alt="">{% endif %}
+    </div>
+    <div class="meta">
+      <span id="modeBadge" class="badge live-badge" style="display:none;">LIVE GAME</span>
+      <span id="demoBadge" class="badge" style="background:#444;">DEMO</span>
+      FSM: <span id="fsmState">{{ state.phase or 'PREGAME' }}</span>
+      <br>
+      <span id="statusBadge" class="badge pregame">PREGAME</span>
+    </div>
+  </div>
+  <div id="liveGameWarning" style="display:none; background:#3a2a0a; color:#ffd; padding:0.5rem 1rem; margin-bottom:1rem; border-radius:6px; font-size:0.9rem;">
+    To track the <strong>real-time game</strong>: set <code>DEMO_MODE=0</code> and <code>ESPN_GAME_ID=&lt;id&gt;</code> in your <code>.env</code> file, then restart the server. Run <code>python find_super_bowl.py</code> in the project folder to get the game ID.
+  </div>
+  <div id="noGameIdWarning" style="display:none; background:#4a1a1a; color:#ffb3b3; padding:0.5rem 1rem; margin-bottom:1rem; border-radius:6px; font-size:0.9rem;">
+    Live mode is on but <code>ESPN_GAME_ID</code> is not set in .env. Set it to the game you want to track and restart. Run <code>python find_super_bowl.py</code> to list games and get the ID.
+  </div>
+
+  <div class="card">
+    <h2>Score</h2>
+    <div class="score-row">
+      <span><span id="cardAwayTeam">{{ state.away_team or 'Seahawks' }}</span></span>
+      <strong id="awayScore">{{ state.away_score | default(0) }}</strong>
+    </div>
+    <div class="score-row">
+      <span><span id="cardHomeTeam">{{ state.home_team or 'Patriots' }}</span></span>
+      <strong id="homeScore">{{ state.home_score | default(0) }}</strong>
+    </div>
+    <p class="meta" id="clockLine"></p>
+    <p class="meta">Kickoff in: <span id="countdown" data-kickoff="{{ kickoff or '2026-02-08T18:30:00-05:00' }}">--:--:--</span></p>
+  </div>
+
+  <div class="card">
+    <h2>Win Probability <button type="button" data-clear="winprob">Clear</button></h2>
+    <ul id="winprobFeed"><li style="opacity:0.75">No updates yet.</li></ul>
+  </div>
+
+  <div class="card">
+    <h2>AI Live Commentary <button type="button" data-clear="commentary">Clear</button></h2>
+    <ul id="commentaryFeed"><li style="opacity:0.75">No commentary yet.</li></ul>
+  </div>
+
+  <div class="card">
+    <h2>Postgame Recap <button type="button" data-clear="recap">Clear</button></h2>
+    <div id="recapBox"><div style="opacity:0.75">Recap when game is FINAL.</div></div>
+  </div>
+
+  <div class="panel-actions">
+    <button type="button" id="pollNowBtn">Poll Now</button>
+    <span id="demoButtons">
+      <button type="button" id="runFullDemoBtn" class="run-full-demo">Run full demo</button>
+    </span>
+    <span id="demoStatus" style="margin-left:0.5rem; font-size:0.85rem;"></span>
+    <span id="autoRefreshLabel" class="meta" style="margin-left:0.5rem; display:none;">Auto-refresh every 30s</span>
+  </div>
+  <p class="meta" style="margin-top:0.5rem;">
+    <span id="demoHelp">Click <a href="#" id="runFullDemoLink" class="run-full-demo-link">Run full demo</a> to play through the game.</span>
+    <span id="liveHelp" style="display:none;">Tracking live game from ESPN. Use Poll Now or leave the page open for auto-refresh.</span>
+    <a href="/api/debug" target="_blank" rel="noopener" style="color:#7eb8ff;">Diagnostics</a>
+  </p>
+
+  <script>
+(function() {
+  "use strict";
+  function el(id) { return document.getElementById(id); }
+  function setText(id, val) {
+    var node = el(id);
+    if (node) node.textContent = val === undefined || val === null ? "" : String(val);
+  }
+
+  function safeNum(n) { var x = Number(n); return isNaN(x) ? 0 : x; }
+
+  // Countdown: don't throw if date invalid
+  try {
+    var countdownEl = el("countdown");
+    var kickoffStr = countdownEl && countdownEl.getAttribute("data-kickoff");
+    if (countdownEl && kickoffStr) {
+      var kickoffDate = new Date(kickoffStr);
+      if (!isNaN(kickoffDate.getTime())) {
+        function pad(n) { return String(Math.floor(n)).padStart(2, "0"); }
+        function tick() {
+          var sec = Math.max(0, Math.floor((kickoffDate - new Date()) / 1000));
+          countdownEl.textContent = pad(sec/3600) + ":" + pad((sec%3600)/60) + ":" + pad(sec%60);
+        }
+        tick();
+        setInterval(tick, 1000);
+      }
+    }
+  } catch (e) {}
+
+  function renderList(ulId, items, emptyMsg) {
+    var ul = el(ulId);
+    if (!ul) return;
+    ul.innerHTML = "";
+    if (!items || items.length === 0) {
+      var li = document.createElement("li");
+      li.style.opacity = "0.75";
+      li.textContent = emptyMsg || "—";
+      ul.appendChild(li);
+      return;
+    }
+    for (var i = 0; i < Math.min(items.length, 50); i++) {
+      var li = document.createElement("li");
+      li.textContent = items[i];
+      ul.appendChild(li);
+    }
+  }
+
+  function renderRecap(txt) {
+    var box = el("recapBox");
+    if (!box) return;
+    box.innerHTML = "";
+    var d = document.createElement("div");
+    d.style.opacity = txt ? "1" : "0.75";
+    d.textContent = txt || "Recap when game is FINAL.";
+    box.appendChild(d);
+  }
+
+  var liveModePollTimer = null;
+  function refreshState() {
+    fetch("/api/settings", { cache: "no-store" }).then(function(r) {
+      return r.ok ? r.json() : {};
+    }).then(function(settingsData) {
+      var w = el("apiKeyWarning");
+      if (w) w.style.display = (settingsData.gemini_configured ? "none" : "block");
+      var liveMode = settingsData.live_mode;
+      var demoMode = settingsData.demo_mode;
+      var gameIdSet = settingsData.espn_game_id_set;
+      var modeBadge = el("modeBadge");
+      var demoBadge = el("demoBadge");
+      if (modeBadge) modeBadge.style.display = liveMode ? "inline-block" : "none";
+      if (demoBadge) demoBadge.style.display = demoMode ? "inline-block" : "none";
+      var demoBtns = el("demoButtons");
+      var demoLink = el("runFullDemoLink");
+      var demoHelp = el("demoHelp");
+      var liveHelp = el("liveHelp");
+      var autoLabel = el("autoRefreshLabel");
+      if (demoBtns) demoBtns.style.display = demoMode ? "inline" : "none";
+      if (demoLink) demoLink.style.display = demoMode ? "inline" : "none";
+      if (demoHelp) demoHelp.style.display = demoMode ? "inline" : "none";
+      if (liveHelp) liveHelp.style.display = liveMode ? "inline" : "none";
+      if (autoLabel) autoLabel.style.display = liveMode ? "inline" : "none";
+      var liveWarn = el("liveGameWarning");
+      var noIdWarn = el("noGameIdWarning");
+      if (liveWarn) liveWarn.style.display = demoMode ? "block" : "none";
+      if (noIdWarn) noIdWarn.style.display = (liveMode && !gameIdSet) ? "block" : "none";
+      if (liveMode && gameIdSet) {
+        if (liveModePollTimer) clearInterval(liveModePollTimer);
+        fetch("/admin/poll", { method: "POST" }).then(refreshState).catch(function() {});
+        liveModePollTimer = setInterval(function() {
+          fetch("/admin/poll", { method: "POST" }).then(refreshState).catch(function() {});
+        }, 30000);
+      } else if (liveModePollTimer) {
+        clearInterval(liveModePollTimer);
+        liveModePollTimer = null;
+      }
+    }).catch(function() {});
+
+    fetch("/api/state", { cache: "no-store" }).then(function(r) { return r.json(); }).then(function(data) {
+      var s = data.state || {};
+      var meta = data.meta || {};
+      var status = (s.status || "pregame").toLowerCase();
+      setText("statusBadge", (s.status || "pregame").toUpperCase());
+      var badge = el("statusBadge");
+      if (badge) badge.className = "badge " + status;
+      setText("fsmState", s.phase || "PREGAME");
+      setText("hdrAwayTeam", s.away_team || "Seahawks");
+      setText("hdrHomeTeam", s.home_team || "Patriots");
+      setText("cardAwayTeam", s.away_team || "Seahawks");
+      setText("cardHomeTeam", s.home_team || "Patriots");
+      setText("awayScore", safeNum(s.away_score));
+      setText("homeScore", safeNum(s.home_score));
+      var clockLine = el("clockLine");
+      if (clockLine) {
+        var q = s.quarter;
+        var c = s.clock || "";
+        clockLine.textContent = (q != null && q !== "") ? "Q" + q + " " + c : "";
+      }
+      renderList("commentaryFeed", data.commentary || [], "No commentary yet.");
+      renderList("winprobFeed", data.winprob_history || [], "No updates yet.");
+      renderRecap(data.postgame_recap || null);
+    }).catch(function() {});
+  }
+
+  // Single click handler on body so buttons always work
+  document.body.addEventListener("click", function(ev) {
+    var t = ev.target;
+    if (!t) return;
+    var clearPanel = t.getAttribute("data-clear");
+    if (clearPanel) {
+      ev.preventDefault();
+      fetch("/admin/clear/" + clearPanel, { method: "POST" }).then(refreshState);
+      return;
+    }
+    var id = t.id;
+    if (id === "runFullDemoLink") {
+      ev.preventDefault();
+      id = "runFullDemoBtn";
+    }
+    if (id === "pollNowBtn") {
+      ev.preventDefault();
+      var btn = el("pollNowBtn");
+      if (btn && btn.disabled) return;
+      if (btn) { btn.disabled = true; btn.textContent = "Polling..."; }
+      fetch("/admin/poll", { method: "POST" }).then(function() {
+        refreshState();
+        if (btn) { btn.disabled = false; btn.textContent = "Poll Now"; }
+      }).catch(function() {
+        if (btn) { btn.disabled = false; btn.textContent = "Poll Now"; }
+      });
+      return;
+    }
+    if (id === "runFullDemoBtn") {
+      ev.preventDefault();
+      var runBtn = el("runFullDemoBtn");
+      var pollBtn = el("pollNowBtn");
+      var statusEl = el("demoStatus");
+      if (runBtn && runBtn.disabled) return;
+      if (runBtn) runBtn.disabled = true;
+      if (pollBtn) pollBtn.disabled = true;
+      var steps = 8;
+      var step = 0;
+      function next() {
+        step++;
+        if (statusEl) statusEl.textContent = "Step " + step + "/" + steps;
+        fetch("/admin/poll", { method: "POST" }).then(function() {
+          refreshState();
+          if (step < steps) {
+            setTimeout(next, 3500);
+          } else {
+            if (statusEl) statusEl.textContent = "Done.";
+            if (runBtn) runBtn.disabled = false;
+            if (pollBtn) pollBtn.disabled = false;
+          }
+        }).catch(function() {
+          if (statusEl) statusEl.textContent = "Error.";
+          if (runBtn) runBtn.disabled = false;
+          if (pollBtn) pollBtn.disabled = false;
+        });
+      }
+      fetch("/admin/demo/reset", { method: "POST" }).then(function() {
+        refreshState();
+        next();
+      }).catch(function() {
+        next();
+      });
+    }
+  });
+
+  refreshState();
+  setInterval(refreshState, 15000);
+})();
+  </script>
+</body>
+</html>

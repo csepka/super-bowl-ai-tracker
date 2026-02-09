@@ -1,0 +1,9 @@
+[
+  {"status": "pregame", "home_score": 0, "away_score": 0},
+  {"status": "live", "home_score": 0, "away_score": 0, "quarter": 1, "clock": "15:00"},
+  {"status": "live", "home_score": 0, "away_score": 7, "quarter": 1, "clock": "08:45"},
+  {"status": "live", "home_score": 7, "away_score": 7, "quarter": 2, "clock": "10:20"},
+  {"status": "live", "home_score": 14, "away_score": 10, "quarter": 3, "clock": "05:30"},
+  {"status": "live", "home_score": 17, "away_score": 17, "quarter": 4, "clock": "01:52"},
+  {"status": "final", "home_score": 28, "away_score": 24, "quarter": 4, "clock": "0:00"}
+]

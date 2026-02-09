@@ -1,0 +1,12 @@
+# Never commit secrets (API keys, game IDs)
+.env
+.env.local
+.env.*.local
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+runtime/
+*.log
